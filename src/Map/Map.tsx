@@ -1,9 +1,8 @@
-import React, { useState, useRef, ChangeEvent } from "react";
+import React, { useState, ChangeEvent, useRef } from "react";
 import {
     MapContainer,
     FeatureGroup,
     ImageOverlay,
-    LayersControl,
 } from "react-leaflet";
 import L, { LatLngBoundsLiteral } from "leaflet";
 import { EditControl } from "react-leaflet-draw";
@@ -16,6 +15,7 @@ type State = {
     imageUrl: string | null;
     polygonName: string;
     showModal: boolean;
+    infoModal: boolean;
     createdLayer: any | null;
     details: string;
     imageFile: File | null;
@@ -26,10 +26,12 @@ const initialState: State = {
     imageUrl: null,
     polygonName: "",
     showModal: false,
+    infoModal: false,
     createdLayer: null,
     details: "",
     imageFile: null,
 };
+
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -53,32 +55,39 @@ const Map: React.FC = () => {
         initialDraftData ? JSON.parse(initialDraftData) : []
     );
     const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
-
-    const [state, setState] = useState<State>(initialState); // Use a single state object
-    const [selectedColor, setSelectedColor] = useState("#FF5733"); // Default color
-    const [selectedBaseLayer, setSelectedBaseLayer] = useState<string>("การไฟฟ้า");
+    const [state, setState] = useState<State>(initialState); 
+    const [selectedColor, setSelectedColor] = useState("#FF5733"); 
     const [geoJsonData, setGeoJsonData] = useState<any>(null);
     const [geoJson, setGeoJson] = useState<any>(null);
-    const layersData = [
-        {
-            id: "electricity",
-            name: "การไฟฟ้า",
-            url: "https://bsv-th-authorities.com/impage_pro/รายคณะ.jpg",
-        },
-        {
-            id: "university",
-            name: "มหาลัย",
-            url: "https://www.utica.edu/sites/default/files/2023-03/Campus-Map-univ.jpg",
-        },
-        {
-            id: "school",
-            name: "โรงเรียน",
-            url: "https://www.uno.edu/sites/default/files/2022-11/Master_Campus_Map_forUC_F22_Nov.jpg",
-        },
-    ];
-
-    const selectedLayerId = "electricity";
-
+    const [mapCenter, setMapCenter] = useState<[number, number]>([65, 150]);
+    const [mapZoom, setMapZoom] = useState<number>(4);
+    const [importedData, setImportedData] = useState<any[]>([]);
+    const [selectedFeature, setSelectedFeature] = useState<any>(null);
+    const mapRef = useRef<any>(null);
+    
+    const flyToFeature = (feature: any) => {
+        if (feature && feature.geometry && feature.geometry.type === "Polygon") {
+            const coordinates = feature.geometry.coordinates[0]; 
+            if (coordinates.length > 0) {
+                const sumLatLng = coordinates.reduce(
+                    (acc: [number, number], coord: [number, number]) => {
+                        return [acc[0] + coord[0], acc[1] + coord[1]];
+                    },
+                    [0, 0]
+                );
+                const avgLatLng = [
+                    sumLatLng[1] / coordinates.length,
+                    sumLatLng[0] / coordinates.length,
+                ];
+                const map = mapRef.current;
+                if (map) {
+                    map.flyTo(avgLatLng, 6);
+                }
+            }
+        }
+    };
+    
+    
     const importGeoJson = (event: ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
@@ -86,6 +95,7 @@ const Map: React.FC = () => {
             reader.onload = (e: ProgressEvent<FileReader>) => {
                 try {
                     const importedData = JSON.parse(e.target?.result as string);
+                    setImportedData(importedData.features || []);
                     setGeoJsonData(importedData);
                     console.log("GeoJSON import successful!"); // Log success message
                 } catch (error) {
@@ -99,14 +109,10 @@ const Map: React.FC = () => {
     const toggleSidebar = () => {
         setIsSidebarOpen(!isSidebarOpen);
     };
-    
+
     const onClickAdminButton = () => {
         setAdminMode(!adminMode);
         console.log(adminMode);
-    };
-
-    const saveToDatabase = (data: any) => {
-        console.log("Saving data to the database:", data);
     };
 
     const onCreated = (e: any) => {
@@ -123,14 +129,28 @@ const Map: React.FC = () => {
                 createdLayer: layer,
             }));
             setDraftPolygons((prevDrafts) => [...prevDrafts, conformingGeoJSON]);
-            setGeoJson(conformingGeoJSON)
-            console.log(conformingGeoJSON)
+            setGeoJson(conformingGeoJSON);
+
+            // Fit the map to the bounds of the newly created polygon
+            const polygonBounds = layer.getBounds();
+            const map = layer._map; // Get a reference to the map
+            map.fitBounds(polygonBounds);
+
+            // Set the map center and zoom to the fitted bounds
+            setMapCenter(map.getCenter());
+            setMapZoom(map.getZoom());
+
+            layer.on('click', function () {
+                // Your onClick logic here
+                console.log('Polygon clicked');
+            });
         } else {
             // ...
         }
     };
 
-    const savePolygonData = () => {     
+
+    const savePolygonData = () => {
         geoJson.properties = {
             id: uuidv4(),
             name: state.polygonName,
@@ -155,6 +175,7 @@ const Map: React.FC = () => {
                 color: selectedColor,
             });
             console.log(state.polygonName)
+
         } else {
         }
     };
@@ -169,45 +190,12 @@ const Map: React.FC = () => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = "polygon_drafts.json"; // ตั้งชื่อไฟล์ GeoJSON ที่คุณต้องการ
+        a.download = "polygon_drafts.json";
         a.style.display = "none";
         document.body.appendChild(a);
         a.click();
         URL.revokeObjectURL(url);
         document.body.removeChild(a);
-    };
-
-    // const exportDrafts = () => {
-    //     const draftsJson = JSON.stringify(draftPolygons);
-    //     const blob = new Blob([draftsJson], { type: "application/json" });
-    //     const url = URL.createObjectURL(blob);
-    //     const a = document.createElement("a");
-    //     a.href = url;
-    //     a.download = "polygon_drafts.json";
-    //     a.click();
-    //     URL.revokeObjectURL(url);
-    // };
-
-
-    const importDrafts = (event: ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        console.log(file);
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e: ProgressEvent<FileReader>) => {
-                try {
-                    const importedData = JSON.parse(e.target?.result as string);
-                    if (Array.isArray(importedData)) {
-                        setDraftPolygons(importedData);
-                    } else {
-                        console.error("Imported data is not an array.");
-                    }
-                } catch (error) {
-                    console.error("Error parsing JSON:", error);
-                }
-            };
-            reader.readAsText(file);
-        }
     };
 
     const handleImageInputChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -220,8 +208,6 @@ const Map: React.FC = () => {
                 try {
                     const importedData = JSON.parse(e.target?.result as string);
                     if (Array.isArray(importedData)) {
-                        // Update name and details here
-
                         setState((prevState) => ({
                             ...prevState,
                             imageFile: file,
@@ -277,6 +263,22 @@ const Map: React.FC = () => {
                         </div>
                     </div>
                 </div>
+                <div className="flex flex-col border">
+                    {/* Other sidebar content */}
+                    <h3 className="text-lg font-semibold mb-2">Imported Data</h3>
+                    <ul>
+                        {importedData.map((item, index) => (
+                            <li key={index}
+                            onClick={() => flyToFeature(item)}
+                            className="cursor-pointer"
+                            >
+                                {/* Render each item from the imported data */}
+                                <span>{item.properties.name}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+
                 {state.showModal && (
                     <div className="bg-gray-200 p-4 ">
                         <h3 className="text-lg font-semibold mb-4">
@@ -357,20 +359,22 @@ const Map: React.FC = () => {
                         </div>
                     </div>
                 )}
+
+                {state.infoModal ? (
+                    <div className="bg-red-600">
+                        <p>{state.createdLayer?.feature?.properties?.name}</p>
+                        <img src={state.createdLayer?.feature?.properties?.image || ""} alt={state.createdLayer?.feature?.properties?.name} width="100" />
+                        <p>{state.createdLayer?.feature?.properties?.details || ""}</p>
+                    </div>
+                ) : null}
             </div>
 
             <div className="w-full">
-                <MapContainer center={[65, 150]} zoom={4} className="w-full h-screen">
-                    {/* <LayersControl position="topright">
-                        {layersData.map((layer) => (
-                            <LayersControl.BaseLayer key={layer.id} name={layer.name} checked={layer.id === selectedLayerId}>
-                                <ImageOverlay bounds={bounds} url={layer.url} />
-
-                            </LayersControl.BaseLayer>
-
-                        ))}
-                    </LayersControl> */}
-                    <BaseMap />
+                <MapContainer ref={mapRef} center={[65, 150]} zoom={4} className="w-full h-screen">
+                <ImageOverlay
+                    bounds={bounds}
+                    url="https://bsv-th-authorities.com/impage_pro/รายคณะ.jpg"
+                />
                     <FeatureGroup>
                         {/* Add this FeatureGroup to contain the drawn polygons */}
                         {adminMode ? (
@@ -403,6 +407,15 @@ const Map: React.FC = () => {
                                                 <img src="${feature.properties.image || ""}" alt="${feature.properties.name}" width="100" />
                                                 <p>${feature.properties.details || ""}</p>`;
                                     layer.bindPopup(popupContent);
+
+                                    layer.on('click', function () {
+                                        setState((prevState) => ({
+                                            ...prevState,
+                                            infoModal: true,
+                                            createdLayer: layer, // ส่งเลเยอร์ของ polygon ที่คลิกไปยัง state
+                                        }));
+                                        setSelectedFeature(feature);
+                                    });
                                 }
                             }}
                         />

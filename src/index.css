@@ -15,3 +15,32 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+.content-table {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 300px;
+  background-color: white;
+  padding: 20px;
+  transition: transform 0.3s ease-in-out;
+  transform: translateY(100%);
+  z-index: 999;
+  overflow: scroll;
+}
+
+.content-table.visible {
+  transform: translateY(0%);
+}
+
+.content-table.slide-up {
+  transition: transform 0.3s ease-in-out;
+}
+
+.container {
+  margin-top: 20px;
+}
+.float-button{
+  z-index: 1000;
+}
