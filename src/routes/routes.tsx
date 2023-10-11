@@ -4,6 +4,7 @@ import Login from "../Login/Login";
 import MapComponents from "../Components/MapComponents";
 import Map from "../Map/Map";
 import UserPreview from "../Components/UserPreview";
+import Userview from "../Components/UserView/Userview";
 
 export default function Router() {
 
@@ -23,7 +24,7 @@ export default function Router() {
     },
     {
       path: "UserPreview",
-      element: <UserPreview/>,
+      element: <Userview/>,
     },
   ]);
 }

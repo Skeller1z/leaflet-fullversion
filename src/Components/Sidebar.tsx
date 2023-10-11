@@ -30,6 +30,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const Logout = () => {
     navigate('/')
   }
+
   return (
     <div
       className={`relative bg-gray-200 transition-all duration-300 ease-in-out z-50 ${
