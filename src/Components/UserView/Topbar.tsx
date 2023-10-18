@@ -1,15 +1,8 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 
-type TopbarProps = {
 
-    importGeoJson: (event: React.ChangeEvent<HTMLInputElement>) => void;
-};
-
-const Topbar: React.FC<TopbarProps> = ({
-
-    importGeoJson,
-}) => {
+const Topbar: React.FC = () => {
     const [showTable, setShowTable] = useState<boolean>(false);
 
     const navigate = useNavigate();
@@ -37,7 +30,7 @@ const Topbar: React.FC<TopbarProps> = ({
         </button>
         {isOpen && (
           <div className="absolute mt-2 w-32 rounded-lg bg-white shadow-lg py-2 -bottom-4 transform translate-y-full right-0">
-                 <input
+                 {/* <input
               id="geoJsonInput"
               type="file"
               accept=".json"
@@ -50,7 +43,7 @@ const Topbar: React.FC<TopbarProps> = ({
               onClick={() => document.getElementById("geoJsonInput")?.click()}
             >
               Import
-            </a>
+            </a> */}
             <a
               href="#"
               className="block px-4 py-2 text-gray-800 hover:bg-gray-200 transition duration-300"

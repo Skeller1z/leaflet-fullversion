@@ -11,7 +11,8 @@ type SidebarProps = {
   exportDrafts: () => void;
   importedData: any[];
   flyToFeature: (feature: any) => void;
-  toggleTable: () => void; 
+  toggleTable: () => void;
+  SelectImageOverlay: (event: React.ChangeEvent<HTMLInputElement>) => void;
 };
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -23,7 +24,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   exportDrafts,
   importedData,
   flyToFeature,
-  toggleTable
+  toggleTable,
+  SelectImageOverlay
 }) => {
 
   const navigate = useNavigate();
@@ -55,6 +57,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             >
               {adminMode ? "Admin Mode" : "Edit Mode"}
             </button>
+            <input className="" type="file" accept="image/*" onChange={SelectImageOverlay} />
             <input
               id="geoJsonInput"
               type="file"

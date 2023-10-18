@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css'
 import Map from './Map/Map';
 import MapComponents from './Components/MapComponents'
 import Router from "./routes/routes";
+import 'devextreme/dist/css/dx.light.css';
 function App() {
   return (
     <>

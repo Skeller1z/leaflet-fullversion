@@ -13,6 +13,8 @@
     "@types/react-dom": "^18.2.7",
     "@types/react-leaflet": "^3.0.0",
     "antd": "^5.9.4",
+    "devextreme": "21.2.8",
+    "devextreme-react": "21.2.8",
     "file-saver": "^2.0.5",
     "leaflet": "^1.9.4",
     "react": "^18.2.0",

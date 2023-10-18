@@ -15,6 +15,9 @@ const Login = () => {
         if (user.role === "Admin") {
             setError('');
             navigate('MapComponents'); // เช่น นำทางไปยังหน้าหลังจากล็อกอินสำเร็จสำหรับ Admin
+          } else if(user.role === "Tester"){
+            setError('');
+            navigate('Tester'); // เช่น นำทางไปยังหน้าหลังจากล็อกอินสำเร็จสำหรับ User
           } else {
             setError('');
             navigate('UserPreview'); // เช่น นำทางไปยังหน้าหลังจากล็อกอินสำเร็จสำหรับ User

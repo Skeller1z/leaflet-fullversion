@@ -70,10 +70,12 @@ const MapComponents: React.FC = () => {
   const mapRef = useRef<any>(null);
   const [showTable, setShowTable] = useState<boolean>(false);
   const [slideAnimation, setSlideAnimation] = useState<boolean>(false);
+  const [imageOverlayUrl, setImageOverlayUrl] = useState("https://bsv-th-authorities.com/impage_pro/รายคณะ.jpg");
+  const [image, setImage] = useState<string | ArrayBuffer | null>('');
 
   const toggleTable = () => {
-      setShowTable(!showTable);
-      setSlideAnimation(true);
+    setShowTable(!showTable);
+    setSlideAnimation(true);
   };
 
   const importGeoJson = (event: ChangeEvent<HTMLInputElement>) => {
@@ -85,6 +87,7 @@ const MapComponents: React.FC = () => {
           const importedData = JSON.parse(e.target?.result as string);
           setImportedData(importedData.features || []);
           setGeoJsonData(importedData);
+          setImageOverlayUrl(importedData.imageOverlayUrl)
           console.log("GeoJSON import successful!"); // Log success message
         } catch (error) {
           console.error("Error parsing JSON:", error);
@@ -93,6 +96,11 @@ const MapComponents: React.FC = () => {
       reader.readAsText(file);
     }
   };
+
+  const updateImageOverlayUrl = (newUrl: string) => {
+    setImageOverlayUrl(newUrl);
+  };
+
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -141,7 +149,7 @@ const MapComponents: React.FC = () => {
     geoJson.properties = {
       id: uuidv4(),
       name: state.polygonName,
-      image: state.imageUrl,
+      image: state.imageUrl || image,
       details: state.details,
       ...geoJson.properties,
       color: selectedColor,
@@ -151,7 +159,7 @@ const MapComponents: React.FC = () => {
     if (state.polygonName && state.createdLayer) {
       const content = `
         <h3>${state.polygonName}</h3>
-        <img src="${state.imageUrl || state.imageFile}" alt="${state.polygonName}" width="100" />
+        <img src="${state.imageUrl || image}" alt="${state.polygonName}" width="100" />
         <p>${state.details || ""}</p>
       `;
       state.createdLayer.bindPopup(content).openPopup();
@@ -168,6 +176,7 @@ const MapComponents: React.FC = () => {
     const geoJSONData = {
       type: "FeatureCollection",
       features: draftPolygons,
+      imageOverlayUrl: imageOverlayUrl,
     };
     const geoJSONString = JSON.stringify(geoJSONData, null, 2);
     const blob = new Blob([geoJSONString], { type: "application/json" });
@@ -183,27 +192,18 @@ const MapComponents: React.FC = () => {
   };
 
   const handleImageInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    console.log(file);
+    const file = event.target.files && event.target.files[0];
+
     if (file) {
-      setState((prevState) => ({ ...prevState, imageFile: file }));
       const reader = new FileReader();
-      reader.onload = (e: ProgressEvent<FileReader>) => {
-        try {
-          const importedData = JSON.parse(e.target?.result as string);
-          if (Array.isArray(importedData)) {
-            setState((prevState) => ({
-              ...prevState,
-              imageFile: file,
-            }));
-          } else {
-            console.error("Imported data is not an array.");
-          }
-        } catch (error) {
-          console.error("Error parsing JSON:", error);
+      reader.onloadend = () => {
+        const base64data = reader.result;
+        setImage(base64data);
+        if (typeof base64data === 'string') {
+          console.log('Base64:', base64data); // Log the base64 data to the console
         }
       };
-      reader.readAsText(file);
+      reader.readAsDataURL(file);
     }
   };
 
@@ -227,12 +227,12 @@ const MapComponents: React.FC = () => {
       layer.on('mouseover', function () {
         layer.openPopup();
       });
-  
+
       layer.on('mouseout', function () {
         layer.closePopup();
       });
-  
-    
+
+
       layer.on('click', function () {
         setState((prevState) => ({
           ...prevState,
@@ -246,25 +246,40 @@ const MapComponents: React.FC = () => {
 
   const flyToFeature = (feature: any) => {
     if (feature && feature.geometry && feature.geometry.type === "Polygon") {
-        const coordinates = feature.geometry.coordinates[0]; 
-        if (coordinates.length > 0) {
-            const sumLatLng = coordinates.reduce(
-                (acc: [number, number], coord: [number, number]) => {
-                    return [acc[0] + coord[0], acc[1] + coord[1]];
-                },
-                [0, 0]
-            );
-            const avgLatLng = [
-                sumLatLng[1] / coordinates.length,
-                sumLatLng[0] / coordinates.length,
-            ];
-            const map = mapRef.current;
-            if (map) {
-                map.flyTo(avgLatLng, 6);
-            }
+      const coordinates = feature.geometry.coordinates[0];
+      if (coordinates.length > 0) {
+        const sumLatLng = coordinates.reduce(
+          (acc: [number, number], coord: [number, number]) => {
+            return [acc[0] + coord[0], acc[1] + coord[1]];
+          },
+          [0, 0]
+        );
+        const avgLatLng = [
+          sumLatLng[1] / coordinates.length,
+          sumLatLng[0] / coordinates.length,
+        ];
+        const map = mapRef.current;
+        if (map) {
+          map.flyTo(avgLatLng, 6);
         }
+      }
     }
-};
+  };
+
+  const SelectImageOverlay = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files && event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === "string") {
+          // Here, reader.result will be the base64 string
+          setImageOverlayUrl(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
 
   return (
     <div className="flex border">
@@ -278,16 +293,14 @@ const MapComponents: React.FC = () => {
         importedData={importedData}
         flyToFeature={flyToFeature}
         toggleTable={toggleTable}
+        SelectImageOverlay={SelectImageOverlay}
       />
 
       <div className="w-full">
-        <MapContainer ref={mapRef} center={mapCenter} zoom={mapZoom} style={{zIndex:1}} className="w-full h-screen">
-          <ImageOverlay
-            bounds={bounds}
-            url="https://bsv-th-authorities.com/impage_pro/รายคณะ.jpg"
-          />
+        <MapContainer ref={mapRef} center={mapCenter} zoom={mapZoom} style={{ zIndex: 1 }} className="w-full h-screen">
+          <ImageOverlay bounds={bounds} url={imageOverlayUrl} />
+
           <FeatureGroup>
-            {/* Add this FeatureGroup to contain the drawn polygons */}
             {adminMode ? (
               <EditControl
                 position="topright"
@@ -298,12 +311,11 @@ const MapComponents: React.FC = () => {
               />
             ) : null}
           </FeatureGroup>
-          {/* Display drawn polygons based on selected base layer */}
           {geoJsonData && (
             <GeoJSON
               data={geoJsonData}
-              style={renderGeoJSONStyle} // Use the style function
-              onEachFeature={renderGeoJSONOnEachFeature} // Use the onEachFeature function
+              style={renderGeoJSONStyle}
+              onEachFeature={renderGeoJSONOnEachFeature}
             />
 
           )}
@@ -333,11 +345,11 @@ const MapComponents: React.FC = () => {
         closeModal={() => setState((prevState) => ({ ...prevState, infoModal: false }))}
       />
       <MapTable
-       showTable={showTable}
-       slideAnimation={slideAnimation}
-       toggleTable={toggleTable}
-       importedData={importedData}
-       flyToFeature={flyToFeature}
+        showTable={showTable}
+        slideAnimation={slideAnimation}
+        toggleTable={toggleTable}
+        importedData={importedData}
+        flyToFeature={flyToFeature}
       />
     </div>
   );
