@@ -212,6 +212,7 @@ const MapComponents: React.FC = () => {
       return {
         fillColor: feature.properties.color,
         color: feature.properties.color,
+        weight: 0,
       };
     }
     return {};
@@ -220,19 +221,29 @@ const MapComponents: React.FC = () => {
   const renderGeoJSONOnEachFeature = (feature: any, layer: any) => {
     if (feature.properties) {
       const popupContent = `
-        <h3>${feature.properties.name}</h3>
-        <img src="${feature.properties.image || ""}" alt="${feature.properties.name}" width="100" />
-        <p>${feature.properties.details || ""}</p>`;
-      layer.bindPopup(popupContent);
+      <div class="max-w-sm p-4 bg-red-600 rounded-lg shadow-md">
+        <h3 class="text-lg font-bold">${feature.properties.name}</h3>
+        <img src="${feature.properties.image || image}" alt="${
+          feature.properties.name
+        }" class="mt-2 mb-4" width="100" />
+        <p class="text-sm">${feature.properties.details || ""}</p>
+      </div>`;
+      layer.bindPopup(popupContent, { maxWidth: 400 });
       layer.on('mouseover', function () {
         layer.openPopup();
+        
       });
 
+      layer.on('mouseover', function () {
+        layer.setStyle({ fillOpacity: 0.2 }); // Change opacity or any other style
+        layer.openPopup();
+      });
+  
       layer.on('mouseout', function () {
+        layer.setStyle({ fillOpacity: 0 }); // Hide the polygon on mouseout
         layer.closePopup();
       });
-
-
+  
       layer.on('click', function () {
         setState((prevState) => ({
           ...prevState,
