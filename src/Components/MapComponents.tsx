@@ -24,6 +24,7 @@ type State = {
   createdLayer: any | null;
   details: string;
   imageFile: File | null;
+  showPopup: boolean;
 };
 
 const initialState: State = {
@@ -35,6 +36,7 @@ const initialState: State = {
   createdLayer: null,
   details: "",
   imageFile: null,
+  showPopup: false
 };
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -221,18 +223,14 @@ const MapComponents: React.FC = () => {
   const renderGeoJSONOnEachFeature = (feature: any, layer: any) => {
     if (feature.properties) {
       const popupContent = `
-      <div class="max-w-sm p-4 bg-red-600 rounded-lg shadow-md">
+      <div class="max-w-sm p-4">
         <h3 class="text-lg font-bold">${feature.properties.name}</h3>
         <img src="${feature.properties.image || image}" alt="${
           feature.properties.name
         }" class="mt-2 mb-4" width="100" />
         <p class="text-sm">${feature.properties.details || ""}</p>
       </div>`;
-      layer.bindPopup(popupContent, { maxWidth: 400 });
-      layer.on('mouseover', function () {
-        layer.openPopup();
-        
-      });
+      layer.bindPopup(popupContent, { maxWidth: 400, className: 'stylePopup' });
 
       layer.on('mouseover', function () {
         layer.setStyle({ fillOpacity: 0.2 }); // Change opacity or any other style
@@ -251,6 +249,7 @@ const MapComponents: React.FC = () => {
           createdLayer: layer,
         }));
         setSelectedFeature(feature);
+        flyToFeature(feature);
       });
     }
   };
@@ -310,7 +309,6 @@ const MapComponents: React.FC = () => {
       <div className="w-full">
         <MapContainer ref={mapRef} center={mapCenter} zoom={mapZoom} style={{ zIndex: 1 }} className="w-full h-screen">
           <ImageOverlay bounds={bounds} url={imageOverlayUrl} />
-
           <FeatureGroup>
             {adminMode ? (
               <EditControl

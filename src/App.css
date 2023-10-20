@@ -7,3 +7,8 @@
     height: 100vh;
   }
 
+  .stylePopup .leaflet-popup-content-wrapper,
+  .stylePopup .leaflet-popup-tip {
+      background-color: #b517ff;
+      padding: 8px;
+  }
